@@ -121,16 +121,58 @@ SELECT * FROM surname_freq_table
 
 --(Optional), create table with employee salary and title, plot bar chart in python for ave salary by title
 
+-- Common salary ranges for employees
 SELECT emp.emp_no, emp.emp_title_id, emp.first_name, emp.last_name, t.title, s.salary 
 	FROM employees AS emp, salaries AS s, titles AS t  WHERE emp.emp_title_id = t.title_id 
 	AND s.emp_no = emp.emp_no;
 
 CREATE VIEW potential_earnings AS
 	SELECT emp.emp_no, emp.emp_title_id, emp.first_name, emp.last_name, t.title, s.salary 
-	FROM employees AS emp, salaries AS s, titles AS t  WHERE emp.emp_title_id = t.title_id 
-	AND s.emp_no = emp.emp_no;
+		FROM employees AS emp, salaries AS s, titles AS t  WHERE emp.emp_title_id = t.title_id 
+		AND s.emp_no = emp.emp_no;
 
 SELECT * FROM potential_earnings
+
+--Count total employees by title
+
+SELECT DISTINCT title AS "Title", COUNT(Title) AS Titles_Held
+	FROM potential_earnings GROUP BY Title
+	ORDER BY  COUNT(Title)DESC;
+
+CREATE VIEW positions_held as
+	SELECT DISTINCT title AS "Title", COUNT(Title) AS Titles_Held
+		FROM potential_earnings GROUP BY Title
+		ORDER BY  COUNT(Title)DESC;
+
+
+--Creating a table of salary ranges by employee titles
+
+WITH ranges ([range], fromValue, toValue)
+AS ( SELECT 1 AS [range], @min AS fromValue, @min+@interval AS toValue
+     UNION ALL
+     SELECT [range]+1, toValue, toValue+@interval
+     FROM ranges
+     WHERE [range]<@levels)
+
+SELECT r.fromValue,
+       r.toValue,
+       w.[count]
+FROM ranges AS r
+OUTER APPLY (
+    SELECT COUNT(*) AS [count]
+    FROM #values AS v
+    --- In a CROSS/OUTER APPLY, the WHERE clause works like
+    --- the JOIN condition:
+    WHERE r.fromValue<=v.value AND
+         (r.toValue>v.value OR
+          r.toValue>@max-0.5*@interval AND
+          v.value=@max)
+    ) AS w
+ORDER BY r.[range];
+
+
+
+-- Average salary by title: 
 
 CREATE VIEW avg_salary AS
 SELECT title AS "Title", round(avg(salary),2) AS "Average Employee Salary" 
